@@ -1,0 +1,128 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  - group: vg-terraform-common
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Validate
+    jobs:
+      - job: ValidateTerraform
+        steps:
+          - checkout: self
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: latest
+          - template: templates/terraform-fmt.yml
+            parameters:
+              workingDirectory: $(Build.SourcesDirectory)/terraform
+
+  - stage: SecurityScan
+    dependsOn: Validate
+    jobs:
+      - job: Checkov
+        steps:
+          - checkout: self
+          - template: templates/security-scan.yml
+            parameters:
+              scanDirectory: $(Build.SourcesDirectory)/terraform
+
+  - stage: PlanDev
+    dependsOn: SecurityScan
+    jobs:
+      - job: PlanDev
+        steps:
+          - checkout: self
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: latest
+          - template: templates/terraform-init.yml
+            parameters:
+              environment: dev
+              workingDirectory: $(Build.SourcesDirectory)/terraform/environments/dev
+          - template: templates/terraform-validate.yml
+            parameters:
+              workingDirectory: $(Build.SourcesDirectory)/terraform/environments/dev
+          - template: templates/terraform-plan.yml
+            parameters:
+              environment: dev
+              workingDirectory: $(Build.SourcesDirectory)/terraform/environments/dev
+
+  - stage: ApplyDev
+    dependsOn: PlanDev
+    jobs:
+      - deployment: ApplyDev
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - download: current
+                  artifact: terraform-plan-dev
+                - template: templates/terraform-init.yml
+                  parameters:
+                    environment: dev
+                    workingDirectory: $(Build.SourcesDirectory)/terraform/environments/dev
+                - template: templates/terraform-apply.yml
+                  parameters:
+                    environment: dev
+                    workingDirectory: $(Build.SourcesDirectory)/terraform/environments/dev
+
+  - stage: PlanProd
+    dependsOn: ApplyDev
+    jobs:
+      - job: PlanProd
+        steps:
+          - checkout: self
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: latest
+          - template: templates/terraform-init.yml
+            parameters:
+              environment: prod
+              workingDirectory: $(Build.SourcesDirectory)/terraform/environments/prod
+          - template: templates/terraform-plan.yml
+            parameters:
+              environment: prod
+              workingDirectory: $(Build.SourcesDirectory)/terraform/environments/prod
+
+  - stage: ApplyProd
+    displayName: Manual Approval and Apply Prod
+    dependsOn: PlanProd
+    jobs:
+      - deployment: ApplyProd
+        environment: prod
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - download: current
+                  artifact: terraform-plan-prod
+                - template: templates/terraform-init.yml
+                  parameters:
+                    environment: prod
+                    workingDirectory: $(Build.SourcesDirectory)/terraform/environments/prod
+                - template: templates/terraform-apply.yml
+                  parameters:
+                    environment: prod
+                    workingDirectory: $(Build.SourcesDirectory)/terraform/environments/prod
+
+  - stage: PostDeploymentValidation
+    dependsOn: ApplyProd
+    jobs:
+      - job: ValidateAzure
+        steps:
+          - script: echo "Add smoke tests, Azure Resource Graph checks, and monitoring validation here."
+            displayName: Post-deployment validation placeholder

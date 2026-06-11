@@ -1,0 +1,9 @@
+parameters:
+  scanDirectory: ''
+
+steps:
+  - script: |
+      python -m pip install --upgrade pip
+      pip install checkov
+      checkov -d "${{ parameters.scanDirectory }}" --quiet --soft-fail
+    displayName: IaC security scan with Checkov

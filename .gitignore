@@ -1,0 +1,24 @@
+# Terraform local files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Local variable files that may contain real subscription IDs or secrets
+*.auto.tfvars
+*.auto.tfvars.json
+*.secret.tfvars
+
+# PowerShell and editor noise
+*.ps1xml
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
+.DS_Store

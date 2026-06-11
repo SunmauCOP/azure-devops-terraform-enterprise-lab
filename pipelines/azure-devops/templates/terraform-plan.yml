@@ -1,0 +1,14 @@
+parameters:
+  environment: ''
+  workingDirectory: ''
+
+steps:
+  - script: |
+      terraform plan -input=false -out="$(Build.ArtifactStagingDirectory)/${{ parameters.environment }}.tfplan"
+      terraform show -no-color "$(Build.ArtifactStagingDirectory)/${{ parameters.environment }}.tfplan" > "$(Build.ArtifactStagingDirectory)/${{ parameters.environment }}.plan.txt"
+    displayName: Terraform plan
+    workingDirectory: ${{ parameters.workingDirectory }}
+
+  - publish: $(Build.ArtifactStagingDirectory)
+    artifact: terraform-plan-${{ parameters.environment }}
+    displayName: Publish Terraform plan artifact

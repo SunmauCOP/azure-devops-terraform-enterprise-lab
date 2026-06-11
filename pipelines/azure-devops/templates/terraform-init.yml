@@ -1,0 +1,9 @@
+parameters:
+  environment: ''
+  workingDirectory: ''
+
+steps:
+  - script: |
+      terraform init -input=false -backend-config="$(Build.SourcesDirectory)/terraform/backend/${{ parameters.environment }}.backend.tfvars"
+    displayName: Terraform init
+    workingDirectory: ${{ parameters.workingDirectory }}

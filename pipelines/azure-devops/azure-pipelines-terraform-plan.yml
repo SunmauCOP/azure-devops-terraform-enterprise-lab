@@ -1,0 +1,37 @@
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: dev
+    values:
+      - management-hub
+      - network
+      - dev
+      - prod
+
+variables:
+  - group: vg-terraform-common
+  - name: workingDirectory
+    value: $(Build.SourcesDirectory)/terraform/environments/${{ parameters.environment }}
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+  - task: TerraformInstaller@1
+    inputs:
+      terraformVersion: latest
+  - template: templates/terraform-init.yml
+    parameters:
+      environment: ${{ parameters.environment }}
+      workingDirectory: $(workingDirectory)
+  - template: templates/terraform-validate.yml
+    parameters:
+      workingDirectory: $(workingDirectory)
+  - template: templates/terraform-plan.yml
+    parameters:
+      environment: ${{ parameters.environment }}
+      workingDirectory: $(workingDirectory)

@@ -1,0 +1,7 @@
+parameters:
+  workingDirectory: ''
+
+steps:
+  - script: terraform validate
+    displayName: Terraform validate
+    workingDirectory: ${{ parameters.workingDirectory }}

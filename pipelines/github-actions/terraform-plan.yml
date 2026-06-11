@@ -1,0 +1,54 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Terraform environment
+        required: true
+        default: dev
+        type: choice
+        options:
+          - management-hub
+          - network
+          - dev
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    env:
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      TF_ENV: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+        working-directory: terraform
+      - name: Terraform init
+        run: terraform init -input=false -backend-config="../../backend/${TF_ENV}.backend.tfvars"
+        working-directory: terraform/environments/${{ env.TF_ENV }}
+      - name: Terraform validate
+        run: terraform validate
+        working-directory: terraform/environments/${{ env.TF_ENV }}
+      - name: Terraform plan
+        run: terraform plan -input=false -out="${TF_ENV}.tfplan"
+        working-directory: terraform/environments/${{ env.TF_ENV }}
+      - name: Upload plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-${{ env.TF_ENV }}
+          path: terraform/environments/${{ env.TF_ENV }}/${{ env.TF_ENV }}.tfplan
+
+# Enterprise improvement: replace ARM_CLIENT_SECRET with Azure federated credentials.
+# Use azure/login with client-id, tenant-id, subscription-id, and OIDC id-token permission.

@@ -1,0 +1,31 @@
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  - group: vg-terraform-common
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+  - task: TerraformInstaller@1
+    inputs:
+      terraformVersion: latest
+  - template: templates/terraform-fmt.yml
+    parameters:
+      workingDirectory: $(Build.SourcesDirectory)/terraform
+  - template: templates/security-scan.yml
+    parameters:
+      scanDirectory: $(Build.SourcesDirectory)/terraform
+  - script: |
+      for env in management-hub network dev prod; do
+        cd "$(Build.SourcesDirectory)/terraform/environments/$env"
+        terraform init -backend=false
+        terraform validate
+      done
+    displayName: Validate all Terraform roots without backend

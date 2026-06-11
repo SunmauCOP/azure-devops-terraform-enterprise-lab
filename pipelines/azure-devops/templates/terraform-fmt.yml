@@ -1,0 +1,7 @@
+parameters:
+  workingDirectory: ''
+
+steps:
+  - script: terraform fmt -check -recursive
+    displayName: Terraform fmt check
+    workingDirectory: ${{ parameters.workingDirectory }}

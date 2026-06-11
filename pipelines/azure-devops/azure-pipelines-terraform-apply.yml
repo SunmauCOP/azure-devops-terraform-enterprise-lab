@@ -1,0 +1,46 @@
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: dev
+    values:
+      - management-hub
+      - network
+      - dev
+      - prod
+
+variables:
+  - group: vg-terraform-common
+  - name: workingDirectory
+    value: $(Build.SourcesDirectory)/terraform/environments/${{ parameters.environment }}
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Apply
+    displayName: Apply ${{ parameters.environment }}
+    jobs:
+      - deployment: TerraformApply
+        displayName: Terraform apply
+        environment: ${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - download: current
+                  artifact: terraform-plan-${{ parameters.environment }}
+                - task: TerraformInstaller@1
+                  inputs:
+                    terraformVersion: latest
+                - template: templates/terraform-init.yml
+                  parameters:
+                    environment: ${{ parameters.environment }}
+                    workingDirectory: $(workingDirectory)
+                - template: templates/terraform-apply.yml
+                  parameters:
+                    environment: ${{ parameters.environment }}
+                    workingDirectory: $(workingDirectory)
